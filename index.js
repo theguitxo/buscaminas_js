@@ -13,6 +13,10 @@ class Log {
     });
     console.log(`[${date}]: ${message}`);
   }
+
+  static logNoDate(message) {
+    console.log(message);
+  }
 }
 
 /**
@@ -21,9 +25,9 @@ class Log {
 class Game {
 
   container;
-  gameContainer;
   gridContainer;
   tilesLine = 10;
+  bombs = 10;
   totalTiles = Math.pow(this.tilesLine, 2);
   tilesList = [];
 
@@ -33,6 +37,13 @@ class Game {
    */
   constructor(container) {
     this.container = container;
+    this.container.style.height = getComputedStyle(this.container).width;
+    const attrUserBombs = +this.container.getAttribute('bombs');
+    const paramUserBombs = +(new URL(location).searchParams.get('bombs'));
+    const customBombs = paramUserBombs || attrUserBombs;
+    if (customBombs && Math.round(customBombs) < this.totalTiles / 4) {
+      this.bombs = Math.round(customBombs);
+    }
     Log.log(`Constructor: Juego con ${this.totalTiles} items (${this.tilesLine} por línea)`);
   }
 
@@ -41,18 +52,12 @@ class Game {
    */
   initGame() {
     Log.log(`Inciando juego`);
-    this.createGameContainer();
     this.createGridContainer();
     this.setTilesList();
     this.setNearBombs();
-    let line = '';
-    this.tilesList.forEach(b => {
-      line = line + '[' + (b.getIsBomb() ? 'B' : b.getNearBombs()) + ']';
-      if (b.id % this.tilesLine === 9) {
-        Log.log(line);
-        line = '';
-      }
-    });
+    if (new URL(location).searchParams.get('showgrid')) {
+      this.showGridInConsole();
+    }
     this.paintItems();
 
     this.gridContainer.addEventListener('ItemPlayed', (event) => {
@@ -75,34 +80,40 @@ class Game {
       }
     
       this.tilesList.filter(i => i.getIsPlayed() && !i.getUpdated())?.forEach(item => item.updateTile());
+
+      if (this.tilesList.filter(i => !i.getIsPlayed())?.length === this.bombs) {
+        this.tilesList.forEach(t => t.setIsPlayed());
+        this.showGameFinishedMessage();
+      }
     });
   }
 
   /**
-   * Crea el contenedor para todos los elementos del juego
+   * showGridInConsole
    */
-  createGameContainer() {
-    this.gameContainer = document.createElement('div');
-    this.gameContainer.style.display = 'flex';
-    this.gameContainer.style.flexDirection = 'column';
-    this.gameContainer.style.gap = '1rem';
-
-    this.container.appendChild(this.gameContainer);
-
-    Log.log('Creado contenedor para componentes del juego');
+  showGridInConsole() {
+    Log.log('Rejilla de juego:');
+    let line = '';
+    this.tilesList.forEach(b => {
+      line += '[' + (b.getIsBomb() ? 'B' : b.getNearBombs()) + ']';
+      if (b.id % this.tilesLine === 9) {
+        line += "\n";
+      }
+    });
+    Log.logNoDate(line);
   }
 
   /**
    * Crea el contenedor para la rejilla con los items donde buscar las minas.
    */
   createGridContainer() {
-    this.container.style.display = 'inline-block';
-    this.container.style.margin = '1rem auto';
-  
+    if (this.gridContainer?.children) {
+      Array.from(this.gridContainer.children)?.forEach(i => i.remove());
+    }
     this.gridContainer = document.createElement('div');
     this.gridContainer.style.display = 'grid';
-    this.gridContainer.style.gridTemplateColumns = `repeat(${this.tilesLine}, auto)`;
-    this.gameContainer.appendChild(this.gridContainer);
+    this.gridContainer.style.gridTemplateColumns = `repeat(${this.tilesLine}, 1fr)`;
+    this.container.appendChild(this.gridContainer);
 
     Log.log('Creado contenedor para rejilla de juego');
   }
@@ -119,7 +130,7 @@ class Game {
         this.tilesList[newBomb].setIsBomb()
         bombsSetted++;
       }
-    } while(bombsSetted < this.tilesLine);
+    } while(bombsSetted < this.bombs);
 
     Log.log(`Creada lista de baldosas con ${bombsSetted} bombas`);
   }
@@ -246,36 +257,74 @@ class Game {
    */
   showGameOverMessage() {
     const overlay = this.getMessageOverlay();
+    const messageContainer = this.getMessageContainer();
 
     const message = document.createElement('div');
-    message.style.border = 'solid 2px white';
-    message.style.padding = '1rem';
-    message.style.fontFamily = 'Arial, Helvetica, sans-serif';
-    message.style.fontSize = '1rem';
     message.style.fontWeight = 800;
     message.style.color = 'indianred';
-    message.style.background = '#c4c1b7';
     message.innerHTML = 'GAME OVER';
 
-    const closeButton = document.createElement('div');
-    closeButton.style.background = 'indianred';
-    closeButton.style.color = 'white';
-    closeButton.style.border = 'solid 2px white';
-    closeButton.style.borderRadius = '4px';
-    closeButton.style.fontSize = '.875rem';
-    closeButton.style.padding = '.5rem 1rem';
-    closeButton.style.fontWeight = 500;
-    closeButton.style.textAlign = 'center';
-    closeButton.style.cursor = 'pointer';
-    closeButton.innerHTML = 'CERRAR';
-
-    closeButton.onclick = () => {
+    const closeButton = this.getButton('indianred', 'white', 'CERRAR', () => {
       overlay.remove();
-    };
+      this.showNewGameMessage();
+    });
 
-    message.appendChild(closeButton);
+    messageContainer.appendChild(message);
+    messageContainer.appendChild(closeButton);
 
-    overlay.appendChild(message);
+    overlay.appendChild(messageContainer);
+
+    this.container.appendChild(overlay);
+  }
+
+  /**
+   * showGameFinishedMessage
+   */
+  showGameFinishedMessage() {
+    const overlay = this.getMessageOverlay();
+    const messageContainer = this.getMessageContainer();
+    
+    const message = document.createElement('div');
+    message.style.fontWeight = 800;
+    message.style.color = 'forestgreen';
+    message.innerHTML = 'JUEGO FINALIZADO CON ÉXITO';
+
+    const closeButton = this.getButton('darkseagreen', 'white', 'ACEPTAR', () => {
+      overlay.remove();
+      this.showNewGameMessage();
+    });
+
+    messageContainer.appendChild(message);
+    messageContainer.appendChild(closeButton);
+
+    overlay.appendChild(messageContainer);
+
+    this.container.appendChild(overlay);
+  }
+
+  showNewGameMessage() {
+    const overlay = this.getMessageOverlay();
+    const messageContainer = this.getMessageContainer();
+    
+    const message = document.createElement('div');
+    message.style.fontWeight = 800;
+    message.style.color = 'forestgreen';
+    message.innerHTML = '¿JUGAR OTRA VEZ?';
+
+    const yesButton = this.getButton('darkseagreen', 'white', 'SI', () => {
+      overlay.remove();
+      this.initGame();
+    });
+
+    const noButton = this.getButton('indianred', 'white', 'NO', () => {
+      overlay.remove();
+    });
+
+    messageContainer.appendChild(message);
+    messageContainer.appendChild(yesButton);
+    messageContainer.appendChild(noButton);
+
+    overlay.appendChild(messageContainer);
 
     this.container.appendChild(overlay);
   }
@@ -298,6 +347,42 @@ class Game {
     overlay.style.alignItems = 'center';
 
     return overlay;
+  }
+
+  /**
+   * getMessageContainer
+   * @returns 
+   */
+  getMessageContainer() {
+    const messageContainer = document.createElement('div');
+    messageContainer.style.border = 'solid 2px white';
+    messageContainer.style.margin = '1rem';
+    messageContainer.style.padding = '1rem';
+    messageContainer.style.fontFamily = 'Arial, Helvetica, sans-serif';
+    messageContainer.style.fontSize = '1rem';
+    messageContainer.style.background = '#c4c1b7';
+    messageContainer.style.display = 'flex';
+    messageContainer.style.flexDirection = 'column';
+    messageContainer.style.gap = '.5rem';
+
+    return messageContainer;
+  }
+
+  getButton(bgColor, color, text, onClick) {
+    const button = document.createElement('button');
+    button.style.background = bgColor;
+    button.style.color = color;
+    button.style.border = 'solid 2px white';
+    button.style.borderRadius = '4px';
+    button.style.fontSize = '.875rem';
+    button.style.padding = '.5rem 1rem';
+    button.style.fontWeight = 500;
+    button.style.textAlign = 'center';
+    button.style.cursor = 'pointer';
+    button.innerHTML = text;
+    button.onclick = onClick;
+
+    return button;
   }
 }
 
@@ -339,12 +424,14 @@ class Tile {
     const item = document.createElement('div');
     item.id = this.idString;
 
-    item.style.width = '1.5rem';
-    item.style.height = '1.5rem';
+    item.style.minWidth = '10%';
+    item.style.minHeight = 'auto';
+    item.style.aspectRatio = '1 / 1';
     item.style.display = 'flex';
     item.style.justifyContent = 'center';
     item.style.alignItems = 'center';
     item.style.cursor = 'pointer';
+    item.style.boxSizing = 'borderbox';
     this.setTilesBorders(item);
 
     item.addEventListener('contextmenu', e => e.preventDefault());
@@ -451,6 +538,7 @@ class Tile {
     object.style.fontFamily = 'Arial, Helvetica, sans-serif';
     object.style.fontWeight = 900;
     object.style.lineHeight = 1;
+    object.style.fontSize = '75%';
     object.style.color = this.infoBombsColors.get(this.nearBombs);
     object.innerHTML = this.nearBombs;
   }
@@ -462,6 +550,7 @@ class Tile {
   updateTileWithBomb(object) {
     const mine = `
       <svg
+        style="width: 95%; height: 95%"
         width="5.2741394mm" height="5.2741318mm"
         viewBox="0 0 5.2741394 5.2741318"
         version="1.1"
@@ -481,7 +570,7 @@ class Tile {
             transform="matrix(-0.70710678,0.70710678,0.70710678,0.70710678,0,0)" />
         </g>
       </svg>`;
-    object.innerHTML = mine;
+    object.innerHTML = '<div style="width: 100%; height: 100%">' + mine + '<div>';
   }
 
   /**

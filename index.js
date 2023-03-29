@@ -269,83 +269,110 @@ class Game {
   }
 
   /**
-   * Muestra el mensaje de 'Bame Over' (cuando se pulsa una bomba)
+   * Elimina el overlay del contenedor del juego
    */
-  showGameOverMessage() {
+  removeOverlay() {
+    this.container.querySelector('.overlay')?.remove();
+  }
+
+  /**
+   * Crea un pop-up para mostrar mensajes
+   * @param {*} data Objeto con los datos para crear el pop-up
+   * @returns Un elemento HTML
+   */
+  createPopUpMessage(data) {
     const overlay = this.getMessageOverlay();
     const messageContainer = this.getMessageContainer();
 
     const message = document.createElement('div');
     message.style.fontWeight = 800;
-    message.style.color = 'indianred';
-    message.innerHTML = 'GAME OVER';
+    message.style.color = data.color;
+    message.innerHTML = data.text;
 
-    const closeButton = this.getButton('indianred', 'white', 'CERRAR', () => {
-      overlay.remove();
-      this.showNewGameMessage();
+    const buttons = data.buttons.map(button => {
+      return this.getButton(button.bgColor, button.color, button.text, button.cbOnClick);
     });
 
     messageContainer.appendChild(message);
-    messageContainer.appendChild(closeButton);
+    buttons.forEach(btn => messageContainer.appendChild(btn));
 
     overlay.appendChild(messageContainer);
 
-    this.container.appendChild(overlay);
+    return overlay;
+  }
+
+  /**
+   * Muestra el mensaje de 'Bame Over' (cuando se pulsa una bomba)
+   */
+  showGameOverMessage() {
+    const data = {
+      color: 'indianred',
+      text: 'GAME OVER',
+      buttons: [
+        {
+          bgColor: 'indianred',
+          color: 'white',
+          text: 'CERRAR',
+          cbOnClick: () => {
+            this.removeOverlay();
+            this.showNewGameMessage();
+          }
+        }
+      ]
+    };
+    this.container.appendChild(this.createPopUpMessage(data));
   }
 
   /**
    * Muestra el mensaje de 'Juego Finalizado' (cuando acaba descubriendo todas las casillas menos las bombas)
    */
   showGameFinishedMessage() {
-    const overlay = this.getMessageOverlay();
-    const messageContainer = this.getMessageContainer();
-
-    const message = document.createElement('div');
-    message.style.fontWeight = 800;
-    message.style.color = 'forestgreen';
-    message.innerHTML = 'JUEGO FINALIZADO CON ÉXITO';
-
-    const closeButton = this.getButton('darkseagreen', 'white', 'ACEPTAR', () => {
-      overlay.remove();
-      this.showNewGameMessage();
-    });
-
-    messageContainer.appendChild(message);
-    messageContainer.appendChild(closeButton);
-
-    overlay.appendChild(messageContainer);
-
-    this.container.appendChild(overlay);
+    const data = {
+      color: 'forestgreen',
+      text: 'JUEGO FINALIZADO CON ÉXITO',
+      buttons: [
+        {
+          bgColor: 'darkseagreen',
+          color: 'white',
+          text: 'ACEPTAR',
+          cbOnClick: () => {
+            this.removeOverlay();
+            this.showNewGameMessage();
+          }
+        }
+      ]
+    };
+    this.container.appendChild(this.createPopUpMessage(data));
   }
 
   /**
    * Muestra el mensaje para preguntar por una nueva partida
    */
   showNewGameMessage() {
-    const overlay = this.getMessageOverlay();
-    const messageContainer = this.getMessageContainer();
-
-    const message = document.createElement('div');
-    message.style.fontWeight = 800;
-    message.style.color = 'forestgreen';
-    message.innerHTML = '¿JUGAR OTRA VEZ?';
-
-    const yesButton = this.getButton('darkseagreen', 'white', 'SI', () => {
-      overlay.remove();
-      this.initGame();
-    });
-
-    const noButton = this.getButton('indianred', 'white', 'NO', () => {
-      overlay.remove();
-    });
-
-    messageContainer.appendChild(message);
-    messageContainer.appendChild(yesButton);
-    messageContainer.appendChild(noButton);
-
-    overlay.appendChild(messageContainer);
-
-    this.container.appendChild(overlay);
+    const data = {
+      color: 'forestgreen',
+      text: '¿JUGAR OTRA VEZ?',
+      buttons: [
+        {
+          bgColor: 'darkseagreen',
+          color: 'white',
+          text: 'SI',
+          cbOnClick: () => {
+            this.removeOverlay();
+            this.initGame();
+          }
+        },
+        {
+          bgColor: 'indianred',
+          color: 'white',
+          text: 'NO',
+          cbOnClick: () => {
+            this.removeOverlay();
+          }
+        }
+      ]
+    };
+    this.container.appendChild(this.createPopUpMessage(data));
   }
 
   /**
@@ -356,6 +383,7 @@ class Game {
     const containerWidth = getComputedStyle(this.container).width;
     const containerHeight = getComputedStyle(this.container).height;
     const overlay = document.createElement('div');
+    overlay.classList.add('overlay');
     overlay.style.position = 'relative';
     overlay.style.width = containerWidth
     overlay.style.height = containerHeight;
@@ -436,7 +464,7 @@ class Tile {
 
   /**
    * Constructor de la clase Tile
-   * @param {*} id
+   * @param {*} id Índentificador de la casilla en la lista
    */
   constructor(id) {
     this.id = id;
@@ -444,8 +472,8 @@ class Tile {
   }
 
   /**
-   * createItem
-   * @returns
+   * Crea un objeto para una casilla del juego
+   * @returns Un objeto Tile
    */
   createItem() {
     const item = document.createElement('div');
@@ -476,58 +504,62 @@ class Tile {
   }
 
   /**
-   * setIsBomb
+   * Establece que la casilla contiene bomba
    */
   setIsBomb() {
     this.isBomb = true;
   }
 
   /**
-   * getIsBomb
-   * @returns
+   * Devuelve si la casilla tiene bomba
+   * @returns boolean
    */
   getIsBomb() {
     return this.isBomb;
   }
 
   /**
-   * setIsPlayed
+   * Establece que la casilla se ha jugado
    */
   setIsPlayed() {
     this.played = true;
   }
 
   /**
-   * getIsPlayed
-   * @returns
+   * Devuelve si la casilla se ha jugado
+   * @returns boolean
    */
   getIsPlayed() {
     return this.played;
   }
 
   /**
-   * getNearBombs
-   * @returns
+   * Devuelve el número de bombas cercanas de la casilla
+   * @returns Number
    */
   getNearBombs() {
     return this.nearBombs;
   }
 
   /**
-   * setNearBombs
-   * @param {*} value
+   * Establece el número de bombas cercanas a la casilla
+   * @param value Número de bombas
    */
   setNearBombs(value) {
     this.nearBombs = value;
   }
 
+  /**
+   * Devuelve si la casilla ya ha actualizado su vista después de ser jugada
+   * @returns boolean
+   */
   getUpdated() {
     return this.updated;
   }
 
   /**
-   * setTilesBorders
-   * @param {*} item
+   * Establece los bordes de una casilla
+   * @param item Un elemento HTML
    */
   setTilesBorders(item) {
     const lightColor = '#c4c1b7';
@@ -544,7 +576,7 @@ class Tile {
   }
 
   /**
-   * updateTile
+   * Actualiza el estilo de una casilla
    */
   updateTile(){
     const object = document.getElementById(this.idString);
@@ -558,8 +590,8 @@ class Tile {
   }
 
   /**
-   * updateTileInfoNearBombs
-   * @param {*} object
+   * Actualiza la casilla para motrar el texto con la información de las bombas cercanas
+   * @param object Un elemento HTML
    */
   updateTileInfoNearBombs(object) {
     object.style.fontFamily = 'Arial, Helvetica, sans-serif';
@@ -571,8 +603,8 @@ class Tile {
   }
 
   /**
-   * updateTileWithBomb
-   * @param {*} object
+   * Actualiza la casilla para mostrar una bomba en la casilla
+   * @param object Un elemento HTML
    */
   updateTileWithBomb(object) {
     const mine = `
@@ -598,20 +630,6 @@ class Tile {
         </g>
       </svg>`;
     object.innerHTML = '<div style="width: 100%; height: 100%">' + mine + '<div>';
-  }
-
-  /**
-   * setInnerHTML
-   * @returns
-   */
-  setInnerHTML() {
-    let value = '';
-    if (this.isBomb) {
-      value = 'B';
-    } else if (this.nearBombs) {
-      value = this.nearBombs;
-    }
-    return value;
   }
 }
 

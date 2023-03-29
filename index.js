@@ -1,7 +1,12 @@
 /**
  * Clase Log
+ * Muestra mensajes en la consola del navegador
  */
 class Log {
+  /**
+   * Muestra un mensaje en la consola con la fecha y hora en que se realiza la acción
+   * @param message Texto a mostrar
+   */
   static log(message) {
     const date = (new Date()).toLocaleString('es-ES', {
       year: 'numeric',
@@ -14,6 +19,10 @@ class Log {
     console.log(`[${date}]: ${message}`);
   }
 
+  /**
+   * Muestra un mensaje en la consola
+   * @param message Texto a mostrar
+   */
   static logNoDate(message) {
     console.log(message);
   }
@@ -21,6 +30,7 @@ class Log {
 
 /**
  * Clase Game
+ * _Crea los elementos necesarios para el juego e interactua con el usuario
  */
 class Game {
 
@@ -33,7 +43,7 @@ class Game {
 
   /**
    * Constructor de la clase Game
-   * @param {*} container Elmento HTML donde insertar el juego
+   * @param container Elmento HTML donde insertar el juego
    */
   constructor(container) {
     this.container = container;
@@ -59,37 +69,42 @@ class Game {
       this.showGridInConsole();
     }
     this.paintItems();
-
-    this.gridContainer.addEventListener('ItemPlayed', (event) => {
-      if (this.tilesList[event.detail.id].getIsBomb()) {
-        this.tilesList.filter(i => !i.getUpdated())?.forEach(item => {
-          item.setIsPlayed();
-          item.updateTile();
-        });
-        this.showGameOverMessage();
-        return;
-      }
-  
-      if (this.tilesList[event.detail.id].getIsPlayed()) {
-        return;
-      }
-      this.tilesList[event.detail.id].setIsPlayed();
-  
-      if (!this.tilesList[+event.detail.id].getNearBombs()) {
-        this.checkNeighbours(+event.detail.id);
-      }
-    
-      this.tilesList.filter(i => i.getIsPlayed() && !i.getUpdated())?.forEach(item => item.updateTile());
-
-      if (this.tilesList.filter(i => !i.getIsPlayed())?.length === this.bombs) {
-        this.tilesList.forEach(t => t.setIsPlayed());
-        this.showGameFinishedMessage();
-      }
-    });
+    this.gridContainer.addEventListener('ItemPlayed', (event) => this.checkItemPlayed(+event.detail.id));
   }
 
   /**
-   * showGridInConsole
+   * Comprueba una casilla una vez pulsada
+   * @param id Indíce de la casilla pulsada a comprobar
+   */
+  checkItemPlayed(id) {
+    if (this.tilesList[id].getIsBomb()) {
+      this.tilesList.filter(i => !i.getUpdated())?.forEach(item => {
+        item.setIsPlayed();
+        item.updateTile();
+      });
+      this.showGameOverMessage();
+      return;
+    }
+
+    if (this.tilesList[id].getIsPlayed()) {
+      return;
+    }
+    this.tilesList[id].setIsPlayed();
+
+    if (!this.tilesList[id].getNearBombs()) {
+      this.checkNeighbours(id);
+    }
+
+    this.tilesList.filter(i => i.getIsPlayed() && !i.getUpdated())?.forEach(item => item.updateTile());
+
+    if (this.tilesList.filter(i => !i.getIsPlayed())?.length === this.bombs) {
+      this.tilesList.forEach(t => t.setIsPlayed());
+      this.showGameFinishedMessage();
+    }
+  }
+
+  /**
+   * Muestra la rejilla con la que se crea el tablero de juego en la consola del navegador
    */
   showGridInConsole() {
     Log.log('Rejilla de juego:');
@@ -119,7 +134,7 @@ class Game {
   }
 
   /**
-   * setTilesList
+   * Crea la lista con la información de todas las piezas del tablero de juego
    */
   setTilesList() {
     this.tilesList = new Array(this.totalTiles).fill(null).map((_i, idx) => new Tile(idx));
@@ -136,21 +151,21 @@ class Game {
   }
 
   /**
-   * setNearBombs
+   * Establece la información sobre las bombas cercanas en las casillas que lo requieran
    */
   setNearBombs() {
     this.tilesList.forEach((item, index) => {
       let bombsFound = 0;
       const row = this.getRow(index);
       const col = this.getCol(index);
-  
+
       const pointsToCheck = [];
-  
+
       const up = row > 0 ? this.tilesLine * -1 : 0;
       const down = row < this.tilesLine - 1 ? this.tilesLine : 0;
       const left = col > 0 ? -1 : 0;
       const right = col < this.tilesLine - 1 ? 1 : 0;
-  
+
       pointsToCheck.push(index + left);
       pointsToCheck.push(index + left + up);
       pointsToCheck.push(index + up);
@@ -159,45 +174,46 @@ class Game {
       pointsToCheck.push(index + right + down);
       pointsToCheck.push(index + down);
       pointsToCheck.push(index + left + down);
-  
+
       Array.from(new Set(pointsToCheck.filter(i => i !== index))).forEach(i => {
         if (this.tilesList[i].getIsBomb()) bombsFound++;
       });
-  
+
       item.setNearBombs(bombsFound);
     });
+    Log.log(`Información de bombas cercanas informadas en las casillas del tablero`);
   }
 
   /**
-   * getRow
-   * @param {*} index 
-   * @returns 
+   * Obtiene la fila a la que pertenece una casilla
+   * @param index Índice de la casilla en la lista
+   * @returns el número de fila
    */
   getRow(index) {
     return Math.floor(index / this.tilesLine);
   }
-  
+
   /**
-   * getCol
-   * @param {*} index 
-   * @returns 
+   * Obtiene la columna a la que pertenece una casilla
+   * @param index Índice de la casilla en la lista
+   * @returns el núemero de columna
    */
   getCol(index) {
     return index % this.tilesLine;
   }
 
   /**
-   * getPlayedNoBombs
-   * @param {*} id 
-   * @returns 
+   * Devuelve si la casilla jugada esta cerca de una bomba
+   * @param id Índice en la lista de la casilla jugada
+   * @returns boolean
    */
   getPlayedNoBombs(id) {
     return (!this.tilesList[id].getNearBombs() && !this.tilesList[id].getIsPlayed());
   }
 
   /**
-   * checkItemNoBombs
-   * @param {*} id 
+   * Comprueba si una casilla jugada contiene bombas
+   * @param id Índice en la lista de la casilla jugada
    */
   checkItemNoBombs(id) {
     if(this.getPlayedNoBombs(id)) {
@@ -207,35 +223,35 @@ class Game {
   }
 
   /**
-   * checkRowNeighbours
-   * @param {*} id 
-   * @param {*} direction 
+   * Comprueba casillas de una misma fila
+   * @param id Índice en la lista de la casilla jugada
+   * @param direction Dirección en que se comprobará la siguiente casilla (izquierda o derecha)
    */
   checkRowNeighbours(id, direction) {
     const newId = id + direction;
-  
+
     if (this.getRow(id) === this.getRow(newId)) {
       this.checkItemNoBombs(newId);
     }
   }
 
   /**
-   * checkColNeighbours
-   * @param {*} id 
-   * @param {*} upDown 
+   * Comprueba casillas de una misma columna
+   * @param id Índice en la lista de la casilla jugada
+   * @param direction Dirección en que se comprobará la siguiente casilla (arriba o abajo)
    */
   checkColNeighbours(id, upDown) {
     const newId = id + (this.tilesLine * upDown);
     const isInside = this.getRow(newId) >= 0 && this.getRow(newId) < this.tilesLine;
-    
+
     if (isInside) {
       this.checkItemNoBombs(newId);
     }
   }
 
   /**
-   * checkNeighbours
-   * @param {*} id 
+   * Comprueba las casillas cercanas a la que se ha jugado
+   * @param id Índice en la lista de la casilla jugada
    */
   checkNeighbours(id) {
     this.checkColNeighbours(id, -1);
@@ -245,7 +261,7 @@ class Game {
   }
 
   /**
-   * paintItems
+   * Crea los elementos del tablero de juego para mostrar en pantalla
    */
   paintItems() {
     Array.from(this.gridContainer.children)?.forEach(i => i.remove());
@@ -253,7 +269,7 @@ class Game {
   }
 
   /**
-   * showGameOverMessage
+   * Muestra el mensaje de 'Bame Over' (cuando se pulsa una bomba)
    */
   showGameOverMessage() {
     const overlay = this.getMessageOverlay();
@@ -278,12 +294,12 @@ class Game {
   }
 
   /**
-   * showGameFinishedMessage
+   * Muestra el mensaje de 'Juego Finalizado' (cuando acaba descubriendo todas las casillas menos las bombas)
    */
   showGameFinishedMessage() {
     const overlay = this.getMessageOverlay();
     const messageContainer = this.getMessageContainer();
-    
+
     const message = document.createElement('div');
     message.style.fontWeight = 800;
     message.style.color = 'forestgreen';
@@ -302,10 +318,13 @@ class Game {
     this.container.appendChild(overlay);
   }
 
+  /**
+   * Muestra el mensaje para preguntar por una nueva partida
+   */
   showNewGameMessage() {
     const overlay = this.getMessageOverlay();
     const messageContainer = this.getMessageContainer();
-    
+
     const message = document.createElement('div');
     message.style.fontWeight = 800;
     message.style.color = 'forestgreen';
@@ -330,8 +349,8 @@ class Game {
   }
 
   /**
-   * getMessageOverlay
-   * @returns 
+   * Crea el contenedor donde mostrar los pop-up con los mensajes
+   * @returns Un elemento HTML
    */
   getMessageOverlay() {
     const containerWidth = getComputedStyle(this.container).width;
@@ -350,8 +369,8 @@ class Game {
   }
 
   /**
-   * getMessageContainer
-   * @returns 
+   * Crea el pop-up que contiene los mensajes a mostrar al usuario
+   * @returns Un elemento HTML
    */
   getMessageContainer() {
     const messageContainer = document.createElement('div');
@@ -368,6 +387,14 @@ class Game {
     return messageContainer;
   }
 
+  /**
+   * Crea un botón para mostrar en los pop-up de mensajes
+   * @param bgColor Color de fondo del botón
+   * @param color Color de texto del botón
+   * @param text Texto del botón
+   * @param onClick Función a ejecutar al pulsar el botón
+   * @returns Un elemento HTML
+   */
   getButton(bgColor, color, text, onClick) {
     const button = document.createElement('button');
     button.style.background = bgColor;
@@ -409,7 +436,7 @@ class Tile {
 
   /**
    * Constructor de la clase Tile
-   * @param {*} id 
+   * @param {*} id
    */
   constructor(id) {
     this.id = id;
@@ -418,7 +445,7 @@ class Tile {
 
   /**
    * createItem
-   * @returns 
+   * @returns
    */
   createItem() {
     const item = document.createElement('div');
@@ -457,7 +484,7 @@ class Tile {
 
   /**
    * getIsBomb
-   * @returns 
+   * @returns
    */
   getIsBomb() {
     return this.isBomb;
@@ -472,7 +499,7 @@ class Tile {
 
   /**
    * getIsPlayed
-   * @returns 
+   * @returns
    */
   getIsPlayed() {
     return this.played;
@@ -480,7 +507,7 @@ class Tile {
 
   /**
    * getNearBombs
-   * @returns 
+   * @returns
    */
   getNearBombs() {
     return this.nearBombs;
@@ -488,7 +515,7 @@ class Tile {
 
   /**
    * setNearBombs
-   * @param {*} value 
+   * @param {*} value
    */
   setNearBombs(value) {
     this.nearBombs = value;
@@ -500,12 +527,12 @@ class Tile {
 
   /**
    * setTilesBorders
-   * @param {*} item 
+   * @param {*} item
    */
   setTilesBorders(item) {
     const lightColor = '#c4c1b7';
     const darkColor = '#403e3a';
-  
+
     const bgLightColor = '#918e86';
     const bgDarkColor = '#706e67';
 
@@ -532,7 +559,7 @@ class Tile {
 
   /**
    * updateTileInfoNearBombs
-   * @param {*} object 
+   * @param {*} object
    */
   updateTileInfoNearBombs(object) {
     object.style.fontFamily = 'Arial, Helvetica, sans-serif';
@@ -545,7 +572,7 @@ class Tile {
 
   /**
    * updateTileWithBomb
-   * @param {*} object 
+   * @param {*} object
    */
   updateTileWithBomb(object) {
     const mine = `
@@ -575,7 +602,7 @@ class Tile {
 
   /**
    * setInnerHTML
-   * @returns 
+   * @returns
    */
   setInnerHTML() {
     let value = '';

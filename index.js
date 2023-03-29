@@ -47,6 +47,9 @@ class Game {
    */
   constructor(container) {
     this.container = container;
+    if (!parseInt(getComputedStyle(this.container).width)) {
+      this.container.style.width = '100%' ;
+    }
     this.container.style.height = getComputedStyle(this.container).width;
     const attrUserBombs = +this.container.getAttribute('bombs');
     const paramUserBombs = +(new URL(location).searchParams.get('bombs'));
@@ -54,6 +57,10 @@ class Game {
     if (customBombs && Math.round(customBombs) < this.totalTiles / 4) {
       this.bombs = Math.round(customBombs);
     }
+    window.addEventListener('resize', (event) => {
+      this.paintItems();
+      this.tilesList.filter(i => i.getIsPlayed())?.forEach(item => item.updateTile());
+    });
     Log.log(`Constructor: Juego con ${this.totalTiles} items (${this.tilesLine} por línea)`);
   }
 
@@ -83,6 +90,7 @@ class Game {
         item.updateTile();
       });
       this.showGameOverMessage();
+      Log.log('Game Over');
       return;
     }
 
@@ -95,11 +103,17 @@ class Game {
       this.checkNeighbours(id);
     }
 
-    this.tilesList.filter(i => i.getIsPlayed() && !i.getUpdated())?.forEach(item => item.updateTile());
+    this.tilesList.filter(i => i.getIsPlayed() && !i.getUpdated())?.forEach((item, idx, list) => {
+      item.updateTile();
+      if (!this.tilesList[id].getNearBombs() && idx === list.length - 1) {
+        Log.log(`${list.length} casillas vacías descubiertas (Total descubiertas: ${this.tilesList.filter(i => i.getIsPlayed()).length})`);
+      }
+    });
 
     if (this.tilesList.filter(i => !i.getIsPlayed())?.length === this.bombs) {
       this.tilesList.forEach(t => t.setIsPlayed());
       this.showGameFinishedMessage();
+      Log.log('Juego finalizado con éxito');
     }
   }
 
@@ -122,8 +136,8 @@ class Game {
    * Crea el contenedor para la rejilla con los items donde buscar las minas.
    */
   createGridContainer() {
-    if (this.gridContainer?.children) {
-      Array.from(this.gridContainer.children)?.forEach(i => i.remove());
+    if (this.gridContainer) {
+      this.gridContainer.remove();
     }
     this.gridContainer = document.createElement('div');
     this.gridContainer.style.display = 'grid';
@@ -181,6 +195,7 @@ class Game {
 
       item.setNearBombs(bombsFound);
     });
+
     Log.log(`Información de bombas cercanas informadas en las casillas del tablero`);
   }
 
@@ -266,13 +281,20 @@ class Game {
   paintItems() {
     Array.from(this.gridContainer.children)?.forEach(i => i.remove());
     this.tilesList.forEach(tile => this.gridContainer.appendChild(tile.createItem()));
+
+    Array.from(this.container.querySelectorAll('.buscaminas_tile'))?.forEach(obj => {
+      const fontSize = (parseInt(getComputedStyle(this.gridContainer).width) / this.tilesLine) - 4;
+      obj.style.fontSize = `${fontSize}px`;
+    });
+
+    Log.log('Rejilla mostrada en pantalla');
   }
 
   /**
    * Elimina el overlay del contenedor del juego
    */
   removeOverlay() {
-    this.container.querySelector('.overlay')?.remove();
+    this.container.querySelector('.buscaminas_overlay')?.remove();
   }
 
   /**
@@ -383,7 +405,7 @@ class Game {
     const containerWidth = getComputedStyle(this.container).width;
     const containerHeight = getComputedStyle(this.container).height;
     const overlay = document.createElement('div');
-    overlay.classList.add('overlay');
+    overlay.classList.add('buscaminas_overlay');
     overlay.style.position = 'relative';
     overlay.style.width = containerWidth
     overlay.style.height = containerHeight;
@@ -478,9 +500,7 @@ class Tile {
   createItem() {
     const item = document.createElement('div');
     item.id = this.idString;
-
-    item.style.minWidth = '10%';
-    item.style.minHeight = 'auto';
+    item.classList.add('buscaminas_tile');
     item.style.aspectRatio = '1 / 1';
     item.style.display = 'flex';
     item.style.justifyContent = 'center';
@@ -597,7 +617,6 @@ class Tile {
     object.style.fontFamily = 'Arial, Helvetica, sans-serif';
     object.style.fontWeight = 900;
     object.style.lineHeight = 1;
-    object.style.fontSize = '75%';
     object.style.color = this.infoBombsColors.get(this.nearBombs);
     object.innerHTML = this.nearBombs;
   }

@@ -648,7 +648,8 @@ class Tile {
             transform="matrix(-0.70710678,0.70710678,0.70710678,0.70710678,0,0)" />
         </g>
       </svg>`;
-    object.innerHTML = '<div style="width: 100%; height: 100%">' + mine + '<div>';
+
+    object.innerHTML = '<div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">' + mine + '<div>';
   }
 }
 
